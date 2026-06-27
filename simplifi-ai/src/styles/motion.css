@@ -1,0 +1,475 @@
+/* ========================================
+   Simplifi AI - Motion Graphics & Animations
+   Cinematic motion effects for teal-minimalist UI
+   ======================================== */
+
+/* --- Hero Particle Canvas --- */
+.hero-particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-particle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0;
+  animation: particleFloat var(--duration) ease-in-out infinite;
+  animation-delay: var(--delay);
+}
+
+@keyframes particleFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(100%) scale(0) rotate(0deg);
+  }
+  10% {
+    opacity: var(--opacity, 0.15);
+  }
+  50% {
+    opacity: var(--opacity, 0.2);
+  }
+  90% {
+    opacity: var(--opacity, 0.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100vh) scale(1) rotate(360deg);
+  }
+}
+
+/* --- Hero gradient wave animation --- */
+.hero-gradient-wave {
+  background: linear-gradient(
+    135deg,
+    #e0f2f4 0%,
+    #f0fafa 25%,
+    #ffffff 50%,
+    #e8f6f8 75%,
+    #d4edf0 100%
+  );
+  background-size: 400% 400%;
+  animation: gradientShift 12s ease-in-out infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  25% { background-position: 50% 0%; }
+  50% { background-position: 100% 50%; }
+  75% { background-position: 50% 100%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* --- Hero ambient glow orbs --- */
+.hero-ambient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.12;
+  pointer-events: none;
+  animation: orbPulse 8s ease-in-out infinite;
+}
+
+.hero-ambient-orb:nth-child(1) {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, #0a7e8c 0%, transparent 70%);
+  top: -10%;
+  left: -5%;
+  animation-delay: 0s;
+}
+
+.hero-ambient-orb:nth-child(2) {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, #7c6fba 0%, transparent 70%);
+  bottom: -5%;
+  right: -5%;
+  animation-delay: 2s;
+}
+
+.hero-ambient-orb:nth-child(3) {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, #38a169 0%, transparent 70%);
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: 4s;
+}
+
+@keyframes orbPulse {
+  0%, 100% { 
+    transform: scale(1) translate(0, 0);
+    opacity: 0.12;
+  }
+  33% { 
+    transform: scale(1.15) translate(30px, -20px);
+    opacity: 0.18;
+  }
+  66% { 
+    transform: scale(0.95) translate(-20px, 30px);
+    opacity: 0.08;
+  }
+}
+
+/* --- Cinematic hero reveal text --- */
+.hero-reveal-text {
+  opacity: 0;
+  animation: textReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.hero-reveal-text:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.hero-reveal-text:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.hero-reveal-text:nth-child(4) {
+  animation-delay: 0.6s;
+}
+
+@keyframes textReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.95);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* ========================================
+   Milestone Cards - Achievement Unlock Effects
+   ======================================== */
+
+/* Card slide-in reveal */
+.milestone-card {
+  opacity: 0;
+  transform: translateY(40px) scale(0.95);
+  animation: milestoneReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.milestone-card:nth-child(1) { animation-delay: 0.1s; }
+.milestone-card:nth-child(2) { animation-delay: 0.25s; }
+.milestone-card:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes milestoneReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Medal shimmer effect */
+.medal-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.medal-shimmer::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 0%,
+    transparent 30%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 70%,
+    transparent 100%
+  );
+  animation: shimmerSweep 3s ease-in-out infinite;
+}
+
+@keyframes shimmerSweep {
+  0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+  25% { transform: translateX(0%) translateY(0%) rotate(45deg); }
+  50% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+  75% { transform: translateX(0%) translateY(0%) rotate(45deg); }
+  100% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+}
+
+/* Sparkle effect for earned achievements */
+.sparkle-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: white;
+  border-radius: 50%;
+  animation: sparkleBurst 2s ease-out infinite;
+}
+
+.sparkle:nth-child(1) { top: 20%; left: 20%; animation-delay: 0s; }
+.sparkle:nth-child(2) { top: 30%; right: 25%; animation-delay: 0.3s; }
+.sparkle:nth-child(3) { bottom: 25%; left: 30%; animation-delay: 0.6s; }
+.sparkle:nth-child(4) { bottom: 20%; right: 20%; animation-delay: 0.9s; }
+.sparkle:nth-child(5) { top: 10%; left: 50%; animation-delay: 1.2s; }
+.sparkle:nth-child(6) { top: 50%; right: 10%; animation-delay: 1.5s; }
+.sparkle:nth-child(7) { bottom: 40%; left: 10%; animation-delay: 1.8s; }
+.sparkle:nth-child(8) { top: 40%; left: 60%; animation-delay: 2.1s; }
+
+@keyframes sparkleBurst {
+  0% {
+    opacity: 0;
+    transform: scale(0) translate(0, 0);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.5) translate(0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0) translate(var(--dx, 20px), var(--dy, -20px));
+  }
+}
+
+/* Gold celebration pulse */
+.milestone-gold {
+  animation: goldPulse 3s ease-in-out infinite;
+}
+
+@keyframes goldPulse {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
+  }
+  50% { 
+    box-shadow: 0 0 40px rgba(255, 215, 0, 0.25), 0 0 60px rgba(255, 215, 0, 0.1);
+  }
+}
+
+/* ========================================
+   Waitlist Dashboard - Rank Progress
+   ======================================== */
+
+/* Counter animation */
+.rank-counter {
+  display: inline-block;
+  position: relative;
+}
+
+.rank-digit {
+  display: inline-block;
+  animation: digitSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.rank-digit:nth-child(1) { animation-delay: 0.1s; }
+.rank-digit:nth-child(2) { animation-delay: 0.15s; }
+.rank-digit:nth-child(3) { animation-delay: 0.2s; }
+.rank-digit:nth-child(4) { animation-delay: 0.25s; }
+.rank-digit:nth-child(5) { animation-delay: 0.3s; }
+
+@keyframes digitSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Animated progress bar */
+.progress-bar-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar-glow::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  animation: progressShimmer 2.5s ease-in-out infinite;
+}
+
+@keyframes progressShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+/* Progress fill entrance */
+.progress-fill {
+  width: 0;
+  transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Orbital rank visualization */
+.rank-orbit {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  margin: 0 auto;
+}
+
+.rank-orbit-ring {
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid rgba(10, 126, 140, 0.15);
+  border-radius: 50%;
+  animation: orbitSpin 20s linear infinite;
+}
+
+.rank-orbit-ring::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  background: #0a7e8c;
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+
+.rank-orbit-ring:nth-child(2) {
+  inset: 15px;
+  animation-duration: 15s;
+  animation-direction: reverse;
+  border-color: rgba(124, 111, 186, 0.12);
+}
+
+.rank-orbit-ring:nth-child(2)::before {
+  background: #7c6fba;
+}
+
+.rank-orbit-ring:nth-child(3) {
+  inset: 30px;
+  animation-duration: 10s;
+  border-color: rgba(56, 161, 105, 0.1);
+}
+
+.rank-orbit-ring:nth-child(3)::before {
+  background: #38a169;
+}
+
+@keyframes orbitSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.rank-orbit-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px;
+  height: 56px;
+  background: radial-gradient(circle, #0a7e8c 0%, #075b66 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 1.25rem;
+  box-shadow: 0 0 30px rgba(10, 126, 140, 0.3);
+  animation: centerPulse 3s ease-in-out infinite;
+}
+
+@keyframes centerPulse {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(10, 126, 140, 0.2);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 40px rgba(10, 126, 140, 0.35);
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+/* ========================================
+   Shared Utilities
+   ======================================== */
+
+/* Smooth float animation for decorative elements */
+.float-slow {
+  animation: floatSlow 6s ease-in-out infinite;
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Scale reveal on scroll (for future use) */
+.reveal-scale {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-scale.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ========================================
+   Accessibility: Respect prefers-reduced-motion
+   ======================================== */
+@media (prefers-reduced-motion: reduce) {
+  .hero-particle,
+  .hero-ambient-orb,
+  .sparkle,
+  .milestone-card,
+  .rank-orbit-ring,
+  .rank-digit {
+    animation: none !important;
+  }
+  .milestone-card {
+    opacity: 1;
+    transform: none;
+  }
+  .hero-gradient-wave {
+    animation: none !important;
+  }
+  .hero-reveal-text {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    animation: none !important;
+  }
+  .rank-digit {
+    opacity: 1;
+    transform: none;
+  }
+  .progress-bar-glow::after {
+    animation: none !important;
+  }
+  .medal-shimmer::after {
+    animation: none !important;
+  }
+}
