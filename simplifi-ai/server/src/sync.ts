@@ -161,6 +161,21 @@ function checkPreferences(start: Date, end: Date, prefs: any): boolean {
 }
 
 async function createAutomatedEvent(userId: string, title: string, startTime: Date, durationMinutes: number) {
+  const userPrefs = await query(`SELECT plan FROM app_users WHERE id = '${userId}'`);
+  const plan = userPrefs[0]?.plan || 'free';
+
+  if (plan === 'free') {
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weeklyCount = await query(`SELECT COUNT(*) as count FROM app_flexible_tasks 
+      WHERE user_id = '${userId}' AND deadline >= '${weekAgo.toISOString()}'`);
+    
+    if (weeklyCount[0].count >= 5) {
+      console.log(`Automation skipped for user ${userId}: Free plan limit reached (5/week)`);
+      return;
+    }
+  }
+
   const auth = await getAuthenticatedClient(userId);
   if (!auth) return;
 
@@ -183,7 +198,7 @@ async function createAutomatedEvent(userId: string, title: string, startTime: Da
     await query(`INSERT INTO app_flexible_tasks (id, user_id, title, duration_minutes, deadline, status) 
       VALUES ('${taskId}', '${userId}', '${title.replace(/'/g, "''")}', ${durationMinutes}, '${startTime.toISOString()}', 'completed')`);
     
-    console.log(`Created automated event: ${title} for user ${userId} at ${startTime.toISOString()}`);
+    console.log(`Created automated event: ${title} for user ${userId} at ${startTime.toISOString()} (Plan: ${plan})`);
   } catch (error) {
     console.error(`Error creating automated event for user ${userId}:`, error);
   }

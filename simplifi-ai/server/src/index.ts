@@ -3,13 +3,73 @@ import { google } from 'googleapis';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
+import Stripe from 'stripe';
 import { query } from './db';
 import { syncUserCalendar } from './sync';
 
 dotenv.config();
 
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock', {
+  apiVersion: '2023-10-16' as any,
+});
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_mock';
+
 const app = express();
 app.use(cors());
+
+// Stripe webhook needs raw body
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+
+  let event;
+
+  try {
+    // In production, we'd verify the signature. 
+    // For development/mock tests, we can skip if the secret is 'whsec_mock'
+    if (process.env.NODE_ENV === 'test' || endpointSecret === 'whsec_mock') {
+      event = JSON.parse(req.body.toString());
+    } else {
+      event = stripe.webhooks.constructEvent(req.body, sig as string, endpointSecret);
+    }
+  } catch (err: any) {
+    console.error('Webhook signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed':
+        const session = event.data.object;
+        const userId = session.client_reference_id;
+        const customerId = session.customer;
+        const subscriptionId = session.subscription;
+
+        if (userId) {
+          await query(`UPDATE app_users SET 
+            plan = 'premium', 
+            stripe_customer_id = '${customerId}', 
+            stripe_subscription_id = '${subscriptionId}' 
+            WHERE id = '${userId}'`);
+          console.log(`User ${userId} upgraded to Premium via Stripe Webhook`);
+        }
+        break;
+      case 'customer.subscription.deleted':
+        const deletedSub = event.data.object;
+        await query(`UPDATE app_users SET plan = 'free' WHERE stripe_subscription_id = '${deletedSub.id}'`);
+        console.log(`Subscription ${deletedSub.id} deleted, user downgraded to Free`);
+        break;
+      default:
+        console.log(`Unhandled event type ${event.type}`);
+    }
+  } catch (error) {
+    console.error('Error handling webhook event:', error);
+    return res.status(500).send('Internal Server Error');
+  }
+
+  res.json({ received: true });
+});
+
 app.use(express.json());
 
 const oauth2Client = new google.auth.OAuth2(
@@ -91,10 +151,35 @@ app.post('/api/user/:id/preferences', async (req, res) => {
 app.post('/api/user/:id/sync', async (req, res) => {
   const { id } = req.params;
   try {
-    await syncUserCalendar(id);
+    // Run in background
+    runSyncJob(id, 'calendar_sync', syncUserCalendar);
     res.send('Sync started');
   } catch (error) {
     res.status(500).send('Sync failed');
+  }
+});
+
+app.get('/api/user/:id/sync-status', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const jobs = await query(`SELECT * FROM background_jobs WHERE user_id = '${id}' ORDER BY updated_at DESC`);
+    res.json(jobs);
+  } catch (error) {
+    res.status(500).send('Error fetching sync status');
+  }
+});
+
+app.post('/api/jobs/:id/retry', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const job = await query(`SELECT * FROM background_jobs WHERE id = '${id}'`);
+    if (job.length === 0) return res.status(404).send('Job not found');
+    
+    // For MVP, just trigger it immediately
+    runSyncJob(job[0].user_id, job[0].job_type, syncUserCalendar);
+    res.send('Retry started');
+  } catch (error) {
+    res.status(500).send('Error retrying job');
   }
 });
 
@@ -108,13 +193,30 @@ app.get('/api/user/:id/tasks', async (req, res) => {
   }
 });
 
+// Helper for background jobs
+async function runSyncJob(userId: string, jobType: string, syncFn: (id: string) => Promise<void>) {
+  const jobId = `${userId}-${jobType}`;
+  try {
+    await query(`
+      INSERT INTO background_jobs (id, user_id, job_type, status, updated_at)
+      VALUES ('${jobId}', '${userId}', '${jobType}', 'processing', CURRENT_TIMESTAMP)
+      ON CONFLICT(id) DO UPDATE SET status='processing', updated_at=CURRENT_TIMESTAMP
+    `);
+    await syncFn(userId);
+    await query(`UPDATE background_jobs SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = '${jobId}'`);
+  } catch (error: any) {
+    console.error(`Job ${jobId} failed:`, error);
+    await query(`UPDATE background_jobs SET status = 'failed', last_error = '${error.message.replace(/'/g, "''")}', updated_at = CURRENT_TIMESTAMP WHERE id = '${jobId}'`);
+  }
+}
+
 // 5. Background Sync Cron (Every 30 minutes)
 cron.schedule('*/30 * * * *', async () => {
   console.log('Running background sync for all users...');
   try {
     const users = await query('SELECT id FROM app_users');
     for (const user of users) {
-      await syncUserCalendar(user.id);
+      runSyncJob(user.id, 'calendar_sync', syncUserCalendar);
     }
   } catch (error) {
     console.error('Background sync failed:', error);

@@ -1,4 +1,5 @@
 import React from 'react';
+import SyncStatus from './SyncStatus';
 
 interface SidebarProps {
   userName: string;
@@ -8,6 +9,8 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ userName, plan, currentScreen, onScreenChange }) => {
+  const userId = 'mock-user-123'; // In a real app, this would come from auth context
+
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col sticky top-0 h-screen z-10 p-6 flex-none">
       <div className="flex items-center gap-2.5 px-2 mb-7">
@@ -20,7 +23,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userName, plan, currentScreen, onScre
       </div>
 
       <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-3 mb-2 mt-1">Main</div>
-      <nav className="flex flex-col gap-0.5 flex-1">
+      <nav className="flex flex-col gap-0.5 flex-1 overflow-y-auto">
         <button 
           onClick={() => onScreenChange('dashboard')} 
           className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold relative transition-all text-left cursor-pointer ${
@@ -63,6 +66,10 @@ const Sidebar: React.FC<SidebarProps> = ({ userName, plan, currentScreen, onScre
           Integrations
           <span className="ml-auto bg-[#E0F2F4] text-[#0A7E8C] text-[10px] font-semibold px-2 py-0.5 rounded-full">2</span>
         </button>
+
+        <div className="mt-6 px-2">
+          <SyncStatus userId={userId} variant="compact" />
+        </div>
       </nav>
 
       <div className="border-t border-gray-100 pt-3 mt-auto">

@@ -3,6 +3,19 @@ import TodaySchedule from './TodaySchedule';
 
 const SmartCalendar: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState(25);
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await fetch('/api/user/mock-user-123/sync', { method: 'POST' });
+      // The background job will be tracked by SyncStatus component
+    } catch (err) {
+      console.error('Manual sync failed:', err);
+    } finally {
+      setTimeout(() => setSyncing(false), 2000);
+    }
+  };
 
   const days = Array.from({ length: 30 }, (_, i) => i + 1);
   const otherDaysBefore = [31];
@@ -28,8 +41,12 @@ const SmartCalendar: React.FC = () => {
           </div>
         </div>
         <div className="flex gap-2.5 items-center">
-          <button className="px-4.5 py-2.25 rounded-lg text-[13px] font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all cursor-pointer">
-            📥 Sync Now
+          <button 
+            onClick={handleSync}
+            disabled={syncing}
+            className="px-4.5 py-2.25 rounded-lg text-[13px] font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all cursor-pointer disabled:opacity-50"
+          >
+            {syncing ? 'Syncing...' : '📥 Sync Now'}
           </button>
           <button className="bg-[#0A7E8C] text-white px-4.5 py-2.25 rounded-lg text-[13px] font-medium shadow-[0_1px_3px_rgba(10,126,140,0.15)] hover:bg-[#075B66] hover:shadow-[0_4px_12px_rgba(10,126,140,0.25)] transition-all cursor-pointer">
             ✦ Add Task

@@ -3,6 +3,7 @@ import StatsCard from './StatsCard';
 import ActivityFeed from './ActivityFeed';
 import TodaySchedule from './TodaySchedule';
 import QuickAdd from './QuickAdd';
+import SyncStatus from './SyncStatus';
 
 interface DailyBriefProps {
   userName: string;
@@ -12,8 +13,10 @@ interface DailyBriefProps {
 }
 
 const DailyBrief: React.FC<DailyBriefProps> = ({ userName, stats, activityItems, scheduleItems }) => {
+  const userId = 'mock-user-123'; // In a real app, this would come from auth context
+
   return (
-    <div className="flex-1 max-w-6xl">
+    <div className="flex-1 max-w-6xl pb-20">
       {/* Top Bar */}
       <div className="flex justify-between items-start mb-7">
         <div>
@@ -75,6 +78,11 @@ const DailyBrief: React.FC<DailyBriefProps> = ({ userName, stats, activityItems,
 
       {/* Quick Add Section */}
       <QuickAdd />
+
+      {/* Sync Status Section */}
+      <div className="mt-8">
+        <SyncStatus userId={userId} variant="detailed" />
+      </div>
 
       {/* Mockup Frame Watermark */}
       <div className="fixed top-2 right-2 bg-[rgba(10,126,140,0.08)] border border-[rgba(10,126,140,0.15)] text-[#0A7E8C] px-3 py-1.25 rounded-full text-[10px] font-medium pointer-events-none z-50 backdrop-blur-xs">

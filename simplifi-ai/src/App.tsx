@@ -4,6 +4,7 @@ import DailyBrief from './components/DailyBrief';
 import SmartCalendar from './components/SmartCalendar';
 import ActivityLog from './components/ActivityLog';
 import Onboarding from './components/Onboarding';
+import SyncStatus from './components/SyncStatus';
 
 const MainLayout: React.FC<{ children: React.ReactNode, userName: string, plan: string, currentScreen: string, onScreenChange: (screen: string) => void }> = ({ children, userName, plan, currentScreen, onScreenChange }) => {
   return (
