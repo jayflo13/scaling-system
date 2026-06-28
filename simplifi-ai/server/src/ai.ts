@@ -18,7 +18,15 @@ export async function classifyEvent(summary: string, description: string) {
     const prompt = `
       Analyze the following calendar event and classify it into one of these categories: [Travel, Medical, Social, Deep Work, Personal, Meeting].
       Recommend buffer times and any necessary preparation tasks.
-      
+      Assign a confidence_score between 0 and 1 based on how certain you are of this classification.
+
+      FEW-SHOT EXAMPLES:
+      1. Summary: "Flight to New York (JFK)" -> {"category": "Travel", "buffer_before_minutes": 120, "buffer_after_minutes": 60, "prep_task": "Pack and check-in", "prep_duration_minutes": 90, "confidence_score": 1.0, "reason": "Explicit flight mention"}
+      2. Summary: "Dentist appointment" -> {"category": "Medical", "buffer_before_minutes": 30, "buffer_after_minutes": 15, "prep_task": "Check insurance details", "prep_duration_minutes": 15, "confidence_score": 0.95, "reason": "Common medical service"}
+      3. Summary: "Lunch with Sarah" -> {"category": "Social", "buffer_before_minutes": 15, "buffer_after_minutes": 15, "prep_task": null, "prep_duration_minutes": 0, "confidence_score": 0.9, "reason": "Social keyword"}
+      4. Summary: "Project X Sync" -> {"category": "Meeting", "buffer_before_minutes": 5, "buffer_after_minutes": 5, "prep_task": "Review Project X notes", "prep_duration_minutes": 10, "confidence_score": 0.85, "reason": "Work meeting"}
+
+      INPUT:
       Summary: ${summary}
       Description: ${description}
 
@@ -29,6 +37,7 @@ export async function classifyEvent(summary: string, description: string) {
         "buffer_after_minutes": number,
         "prep_task": "string | null",
         "prep_duration_minutes": number,
+        "confidence_score": number,
         "reason": "string"
       }
     `;
@@ -54,6 +63,7 @@ function fallbackClassifier(summary: string, description: string) {
       buffer_after_minutes: 60,
       prep_task: 'Pack for flight',
       prep_duration_minutes: 90,
+      confidence_score: 0.9,
       reason: 'Detected flight event via keyword matching'
     };
   }
@@ -65,6 +75,7 @@ function fallbackClassifier(summary: string, description: string) {
       buffer_after_minutes: 15,
       prep_task: 'Prepare medical history',
       prep_duration_minutes: 15,
+      confidence_score: 0.85,
       reason: 'Detected medical appointment via keyword matching'
     };
   }
@@ -76,6 +87,7 @@ function fallbackClassifier(summary: string, description: string) {
       buffer_after_minutes: 15,
       prep_task: null,
       prep_duration_minutes: 0,
+      confidence_score: 0.8,
       reason: 'Detected social event via keyword matching'
     };
   }
@@ -86,6 +98,7 @@ function fallbackClassifier(summary: string, description: string) {
     buffer_after_minutes: 0,
     prep_task: null,
     prep_duration_minutes: 0,
+    confidence_score: 0.5,
     reason: 'Generic event'
   };
 }

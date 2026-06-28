@@ -1,8 +1,19 @@
 import { query } from './db';
 import logger from './logger';
 
+async function isPremium(userId: string): Promise<boolean> {
+  const result = await query(`SELECT plan FROM app_users WHERE id = '${userId}'`);
+  return result.length > 0 && result[0].plan === 'premium';
+}
+
 // Kroger Integration
 export async function searchKrogerProducts(userId: string, term: string) {
+  if (!(await isPremium(userId))) {
+    logger.info(`Kroger search restricted for free user: ${userId}`);
+    // For free users, maybe return only 1 result or throw error
+    // Let's allow search but restrict adding to cart
+  }
+  
   // In a real app, we would use the access token from app_kroger_auth
   // and call the Kroger API. For this MVP, we'll use high-fidelity mock data.
   logger.info(`Searching Kroger products for ${term} (user: ${userId})`);
@@ -17,6 +28,10 @@ export async function searchKrogerProducts(userId: string, term: string) {
 }
 
 export async function addToKrogerCart(userId: string, upc: string, quantity: number, householdId?: string) {
+  if (!(await isPremium(userId))) {
+    throw { status: 403, message: 'Kroger Cart integration requires a Premium subscription.' };
+  }
+
   if (householdId) {
     // Check for duplicates in the last hour
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -112,6 +127,10 @@ export async function getSplitwiseBalances(userId: string) {
 }
 
 export async function createSplitwiseExpense(userId: string, groupId: string, description: string, amount: number) {
+  if (!(await isPremium(userId))) {
+    throw { status: 403, message: 'Splitwise integration requires a Premium subscription.' };
+  }
+
   const id = Math.random().toString(36).substring(2, 15);
   await query(`INSERT INTO app_splitwise_expenses (id, user_id, group_id, description, amount, status) VALUES ('${id}', '${userId}', '${groupId}', '${description}', ${amount}, 'draft')`);
   return { id, status: 'draft' };

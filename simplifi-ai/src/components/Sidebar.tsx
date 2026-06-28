@@ -46,6 +46,17 @@ const Sidebar: React.FC<SidebarProps> = ({ userName, plan, currentScreen, onScre
           {currentScreen === 'calendar' && <div className="absolute left-[-16px] top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#0A7E8C] rounded-r-sm"></div>}
         </button>
         <button 
+          onClick={() => onScreenChange('approvals')} 
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold relative transition-all text-left cursor-pointer ${
+            currentScreen === 'approvals' ? 'bg-[#E0F2F4] text-[#0A7E8C]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+          }`}
+        >
+          <span className="text-base flex-none">◉</span>
+          Approvals
+          <span className="ml-auto bg-amber-50 text-amber-600 text-[10px] font-semibold px-2 py-0.5 rounded-full">4</span>
+          {currentScreen === 'approvals' && <div className="absolute left-[-16px] top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#0A7E8C] rounded-r-sm"></div>}
+        </button>
+        <button 
           onClick={() => onScreenChange('activity')} 
           className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold relative transition-all text-left cursor-pointer ${
             currentScreen === 'activity' ? 'bg-[#E0F2F4] text-[#0A7E8C]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
@@ -54,6 +65,16 @@ const Sidebar: React.FC<SidebarProps> = ({ userName, plan, currentScreen, onScre
           <span className="text-base flex-none">🤖</span>
           Activity Log
           {currentScreen === 'activity' && <div className="absolute left-[-16px] top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#0A7E8C] rounded-r-sm"></div>}
+        </button>
+        <button 
+          onClick={() => onScreenChange('sync')} 
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold relative transition-all text-left cursor-pointer ${
+            currentScreen === 'sync' ? 'bg-[#E0F2F4] text-[#0A7E8C]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+          }`}
+        >
+          <span className="text-base flex-none">🔄</span>
+          Sync Status
+          {currentScreen === 'sync' && <div className="absolute left-[-16px] top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#0A7E8C] rounded-r-sm"></div>}
         </button>
         
         <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-3 mb-2 mt-4">Settings</div>

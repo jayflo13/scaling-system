@@ -5,6 +5,7 @@ import SmartCalendar from './components/SmartCalendar';
 import ActivityLog from './components/ActivityLog';
 import Onboarding from './components/Onboarding';
 import SyncStatus from './components/SyncStatus';
+import ApprovalsInbox from './components/ApprovalsInbox';
 
 const MainLayout: React.FC<{ children: React.ReactNode, userName: string, plan: string, currentScreen: string, onScreenChange: (screen: string) => void }> = ({ children, userName, plan, currentScreen, onScreenChange }) => {
   return (
@@ -81,7 +82,14 @@ const App: React.FC = () => {
         />
       )}
       {currentScreen === 'calendar' && <SmartCalendar />}
+      {currentScreen === 'approvals' && <ApprovalsInbox />}
       {currentScreen === 'activity' && <ActivityLog />}
+      {currentScreen === 'sync' && (
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-2xl font-bold mb-6 text-gray-900">System Synchronization</h1>
+          <SyncStatus userId="mock-user-123" variant="detailed" />
+        </div>
+      )}
     </MainLayout>
   );
 };

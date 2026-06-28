@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { query } from './db';
+import { classifyEvent } from './ai';
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -57,6 +58,9 @@ export async function syncUserCalendar(userId: string) {
     const userPrefs = await query(`SELECT * FROM app_users WHERE id = '${userId}'`);
     const prefs = userPrefs[0] || {};
 
+    // 4. FEEDBACK LOOP: Check for deleted or moved automated events
+    await checkAutomatedEventsFeedback(userId, events);
+
     for (const event of events) {
       await processEventForAutomations(userId, event, events, prefs);
     }
@@ -65,60 +69,103 @@ export async function syncUserCalendar(userId: string) {
   }
 }
 
-async function processEventForAutomations(userId: string, event: any, allEvents: any[], prefs: any) {
-  const summary = (event.summary || '').toLowerCase();
-  if (summary.startsWith('📅 [simplifi]')) return; // Don't process our own automated events
-
-  if (summary.includes('flight') || summary.includes('departure')) {
-    await handleFlightAutomation(userId, event, allEvents, prefs);
-  }
-
-  if (summary.includes('doctor') || summary.includes('dentist') || summary.includes('appointment')) {
-    await handleOffsiteAutomation(userId, event, allEvents, prefs);
+async function checkAutomatedEventsFeedback(userId: string, currentEvents: any[]) {
+  const ourTasks = await query(`SELECT * FROM app_flexible_tasks WHERE user_id = '${userId}' AND status = 'completed'`);
+  
+  for (const task of ourTasks) {
+    const calendarEvent = currentEvents.find(e => e.summary === task.title);
+    
+    if (!calendarEvent) {
+      // Event was deleted
+      const telemetryId = Math.random().toString(36).substring(2, 15);
+      await query(`INSERT INTO telemetry_events (id, user_id, event_type, event_data) 
+        VALUES ('${telemetryId}', '${userId}', 'automated_event_deleted', '${JSON.stringify({ title: task.title }).replace(/'/g, "''")}')`);
+      await query(`UPDATE app_flexible_tasks SET status = 'deleted' WHERE id = '${task.id}'`);
+      console.log(`Detected deletion of automated event: ${task.title} for user ${userId}`);
+    } else {
+      const calendarStart = new Date(calendarEvent.start.dateTime || calendarEvent.start.date).toISOString();
+      if (calendarStart !== task.deadline) {
+        // Event was moved
+        const telemetryId = Math.random().toString(36).substring(2, 15);
+        await query(`INSERT INTO telemetry_events (id, user_id, event_type, event_data) 
+          VALUES ('${telemetryId}', '${userId}', 'automated_event_moved', '${JSON.stringify({ title: task.title, old_start: task.deadline, new_start: calendarStart }).replace(/'/g, "''")}')`);
+        await query(`UPDATE app_flexible_tasks SET deadline = '${calendarStart}' WHERE id = '${task.id}'`);
+        console.log(`Detected move of automated event: ${task.title} for user ${userId} to ${calendarStart}`);
+      }
+    }
   }
 }
 
-async function handleFlightAutomation(userId: string, flightEvent: any, allEvents: any[], prefs: any) {
-  const departureTime = new Date(flightEvent.start.dateTime || flightEvent.start.date);
-  const packingTitle = `📅 [Simplifi] Packing for Flight: ${flightEvent.summary}`;
+export async function processEventForAutomations(userId: string, event: any, allEvents: any[], prefs: any) {
+  const summary = event.summary || '';
+  const description = event.description || '';
   
-  const existing = await query(`SELECT * FROM app_flexible_tasks WHERE user_id = '${userId}' AND title = '${packingTitle}'`);
+  if (summary.toLowerCase().startsWith('📅 [simplifi]')) return;
+
+  // 1. Gemini-powered event classification with confidence score
+  const classification = await classifyEvent(summary, description);
+  
+  // 2. Telemetry for AI suggestion
+  const telemetryId = Math.random().toString(36).substring(2, 15);
+  await query(`INSERT INTO telemetry_events (id, user_id, event_type, event_data) 
+    VALUES ('${telemetryId}', '${userId}', 'intelligent_action_suggested', '${JSON.stringify({ summary, classification }).replace(/'/g, "''")}')`);
+
+  // 3. Handle Preparation Tasks
+  if (classification.prep_task && classification.prep_duration_minutes > 0) {
+    await handlePrepTaskAutomation(userId, event, classification, allEvents, prefs);
+  }
+
+  // 4. Handle Buffers
+  if (classification.buffer_before_minutes > 0 || classification.buffer_after_minutes > 0) {
+    await handleBufferAutomation(userId, event, classification, allEvents, prefs);
+  }
+}
+
+async function handlePrepTaskAutomation(userId: string, event: any, classification: any, allEvents: any[], prefs: any) {
+  const eventStart = new Date(event.start.dateTime || event.start.date);
+  const title = `📅 [Simplifi] Prep: ${classification.prep_task}`;
+  
+  const existing = await query(`SELECT * FROM app_flexible_tasks WHERE user_id = '${userId}' AND title = '${title.replace(/'/g, "''")}'`);
   if (existing.length > 0) return;
 
-  // Search for a 90-minute gap the evening before (17:00 - 22:00)
-  const targetDate = new Date(departureTime);
-  targetDate.setDate(targetDate.getDate() - 1);
+  const duration = classification.prep_duration_minutes;
   
-  const searchStart = new Date(targetDate);
-  searchStart.setHours(17, 0, 0, 0);
-  const searchEnd = new Date(targetDate);
-  searchEnd.setHours(22, 0, 0, 0);
-
-  const slot = findGap(searchStart, searchEnd, 90, allEvents, prefs);
+  // ROBUST SCHEDULING: 3-day rolling window
+  let slot = null;
+  for (let dayOffset = 0; dayOffset <= 2; dayOffset++) {
+    const searchEnd = new Date(eventStart.getTime() - 30 * 60000 - (dayOffset * 24 * 60 * 60 * 1000));
+    const searchStart = new Date(searchEnd.getTime() - 24 * 60 * 60 * 1000);
+    
+    slot = findGap(searchStart, searchEnd, duration, allEvents, prefs);
+    if (slot) break;
+  }
 
   if (slot) {
-    await createAutomatedEvent(userId, packingTitle, slot, 90);
-  } else {
-    console.log(`No 90-minute gap found for packing for user ${userId} on ${targetDate.toDateString()}`);
+    await createAutomatedEvent(userId, title, slot, duration, classification.confidence_score);
   }
 }
 
-async function handleOffsiteAutomation(userId: string, appointmentEvent: any, allEvents: any[], prefs: any) {
-  const startTime = new Date(appointmentEvent.start.dateTime || appointmentEvent.start.date);
-  const endTime = new Date(appointmentEvent.end.dateTime || appointmentEvent.end.date);
+async function handleBufferAutomation(userId: string, event: any, classification: any, allEvents: any[], prefs: any) {
+  const startTime = new Date(event.start.dateTime || event.start.date);
+  const endTime = new Date(event.end.dateTime || event.end.date);
   
-  const bufferBeforeTitle = `📅 [Simplifi] Travel to ${appointmentEvent.summary}`;
-  const bufferAfterTitle = `📅 [Simplifi] Travel from ${appointmentEvent.summary}`;
+  if (classification.buffer_before_minutes > 0) {
+    const title = `📅 [Simplifi] ${classification.category} Buffer (Before)`;
+    const existing = await query(`SELECT * FROM app_flexible_tasks WHERE user_id = '${userId}' AND title = '${title.replace(/'/g, "''")}'`);
+    if (existing.length === 0) {
+      const bufferStart = new Date(startTime.getTime() - classification.buffer_before_minutes * 60000);
+      await createAutomatedEvent(userId, title, bufferStart, classification.buffer_before_minutes, classification.confidence_score);
+    }
+  }
 
-  const existing = await query(`SELECT * FROM app_flexible_tasks WHERE user_id = '${userId}' AND title = '${bufferBeforeTitle}'`);
-  if (existing.length > 0) return;
-
-  const bufferBeforeStart = new Date(startTime.getTime() - 30 * 60000);
-  const bufferAfterStart = new Date(endTime);
-
-  // For buffers, we just add them and let the user know if there's a conflict
-  await createAutomatedEvent(userId, bufferBeforeTitle, bufferBeforeStart, 30);
-  await createAutomatedEvent(userId, bufferAfterTitle, bufferAfterStart, 30);
+  if (classification.buffer_after_minutes > 0) {
+    const title = `📅 [Simplifi] ${classification.category} Buffer (After)`;
+    const existing = await query(`SELECT * FROM app_flexible_tasks WHERE user_id = '${userId}' AND title = '${title.replace(/'/g, "''")}'`);
+    if (existing.length === 0) {
+      const bufferStart = new Date(endTime);
+      await createAutomatedEvent(userId, title, bufferStart, classification.buffer_after_minutes, classification.confidence_score);
+    }
+  }
 }
 
 function findGap(start: Date, end: Date, durationMinutes: number, events: any[], prefs: any): Date | null {
@@ -160,46 +207,52 @@ function checkPreferences(start: Date, end: Date, prefs: any): boolean {
   return true;
 }
 
-async function createAutomatedEvent(userId: string, title: string, startTime: Date, durationMinutes: number) {
+async function createAutomatedEvent(userId: string, title: string, startTime: Date, durationMinutes: number, confidenceScore: number = 1.0) {
   const userPrefs = await query(`SELECT plan FROM app_users WHERE id = '${userId}'`);
   const plan = userPrefs[0]?.plan || 'free';
 
   if (plan === 'free') {
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
-    const weeklyCount = await query(`SELECT COUNT(*) as count FROM app_flexible_tasks 
+    const weeklyCountResult = await query(`SELECT COUNT(*) as count FROM app_flexible_tasks 
       WHERE user_id = '${userId}' AND deadline >= '${weekAgo.toISOString()}'`);
     
-    if (weeklyCount[0].count >= 5) {
+    const count = (weeklyCountResult[0] as any).count;
+    if (count >= 5) {
       console.log(`Automation skipped for user ${userId}: Free plan limit reached (5/week)`);
       return;
     }
   }
 
-  const auth = await getAuthenticatedClient(userId);
-  if (!auth) return;
+  // TRIAGE STATUS: Confidence threshold
+  const status = confidenceScore < 0.8 ? 'requires_approval' : 'completed';
 
-  const calendar = google.calendar({ version: 'v3', auth });
-  const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
+  if (status === 'completed') {
+    const auth = await getAuthenticatedClient(userId);
+    if (auth) {
+      const calendar = google.calendar({ version: 'v3', auth });
+      const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
 
-  try {
-    await calendar.events.insert({
-      calendarId: 'primary',
-      requestBody: {
-        summary: title,
-        description: 'Automated by Simplifi AI',
-        start: { dateTime: startTime.toISOString() },
-        end: { dateTime: endTime.toISOString() },
-        transparency: 'opaque',
-      },
-    });
-
-    const taskId = Math.random().toString(36).substring(2, 15);
-    await query(`INSERT INTO app_flexible_tasks (id, user_id, title, duration_minutes, deadline, status) 
-      VALUES ('${taskId}', '${userId}', '${title.replace(/'/g, "''")}', ${durationMinutes}, '${startTime.toISOString()}', 'completed')`);
-    
-    console.log(`Created automated event: ${title} for user ${userId} at ${startTime.toISOString()} (Plan: ${plan})`);
-  } catch (error) {
-    console.error(`Error creating automated event for user ${userId}:`, error);
+      try {
+        await calendar.events.insert({
+          calendarId: 'primary',
+          requestBody: {
+            summary: title,
+            description: 'Automated by Simplifi AI',
+            start: { dateTime: startTime.toISOString() },
+            end: { dateTime: endTime.toISOString() },
+            transparency: 'opaque',
+          },
+        });
+      } catch (error) {
+        console.error(`Error creating Google Calendar event for user ${userId}:`, error);
+      }
+    }
   }
+
+  const taskId = Math.random().toString(36).substring(2, 15);
+  await query(`INSERT INTO app_flexible_tasks (id, user_id, title, duration_minutes, deadline, status, confidence_score) 
+    VALUES ('${taskId}', '${userId}', '${title.replace(/'/g, "''")}', ${durationMinutes}, '${startTime.toISOString()}', '${status}', ${confidenceScore})`);
+  
+  console.log(`Created automated task: ${title} for user ${userId} with status: ${status} (Confidence: ${confidenceScore})`);
 }
