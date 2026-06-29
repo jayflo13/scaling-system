@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "claude-opus-4-8",
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "WebSearch",
+      "WebFetch",
+      "mcp__ibkr__get_price_snapshot",
+      "mcp__ibkr__get_price_history",
+      "mcp__ibkr__get_company_themes",
+      "mcp__ibkr__get_theme_details",
+      "mcp__ibkr__search_contracts",
+      "mcp__ibkr__search_futures",
+      "mcp__ibkr__search_investment_topics",
+      "mcp__ibkr__get_option_data",
+      "mcp__ibkr__get_option_parameters"
+    ],
+    "ask": [
+      "mcp__gmail__create_draft"
+    ],
+    "deny": [
+      "mcp__ibkr__create_order_instruction",
+      "mcp__ibkr__delete_order_instruction",
+      "mcp__ibkr__get_account_balances",
+      "mcp__ibkr__get_account_positions",
+      "mcp__ibkr__get_account_orders",
+      "mcp__ibkr__get_account_trades",
+      "mcp__ibkr__get_account_summary",
+      "mcp__ibkr__provide_customer_feedback",
+      "Bash",
+      "Write(/etc/**)",
+      "Write(~/.ssh/**)",
+      "Read(./.env)",
+      "Read(~/.aws/**)",
+      "Read(~/.ssh/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/hooks/pre_tool_use.mjs\"" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/hooks/post_tool_use.mjs\"" }
+        ]
+      }
+    ]
+  }
+}

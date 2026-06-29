@@ -1,0 +1,22 @@
+{
+  "name": "signal-desk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Autonomous, read-only market-research signal desk built on Claude Code (gated autonomy).",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "scripts": {
+    "desk": "node --experimental-strip-types src/orchestrator.ts",
+    "approve": "node --experimental-strip-types src/approve.ts",
+    "audit": "node --experimental-strip-types src/audit.ts --print",
+    "halt": "node -e \"require('fs').writeFileSync('HALT', new Date().toISOString())\" && echo 'HALT engaged — all agents stopped.'",
+    "resume": "node -e \"try{require('fs').unlinkSync('HALT')}catch{}\" && echo 'HALT cleared — agents may run.'"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

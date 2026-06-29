@@ -1,0 +1,15 @@
+# signal-desk schedule (install with: crontab crontab.example)
+# Runs one read-only research cycle on weekday mornings (07:00).
+# Output lands in pending/ — you still approve delivery manually.
+#
+# Adjust the path and TZ to your machine. Keep ANTHROPIC_API_KEY in the
+# environment (e.g. via the wrapper script) rather than inline here.
+
+TZ=America/New_York
+
+# min hour dom mon dow   command
+0 7 * * 1-5   cd /path/to/scaling-system/signal-desk && /usr/bin/env -S bash -lc 'npm run desk >> logs/cron.log 2>&1'
+
+# Optional: a midday refresh. Comment out until you trust the daily run and
+# have confirmed the budget cap holds across multiple same-day runs.
+# 0 12 * * 1-5  cd /path/to/scaling-system/signal-desk && /usr/bin/env -S bash -lc 'npm run desk >> logs/cron.log 2>&1'
