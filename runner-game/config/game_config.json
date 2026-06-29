@@ -1,0 +1,8 @@
+{
+  "active_theme": "default",
+  "base_speed": 900,
+  "difficulty_ramp": 0.018,
+  "rewarded_coins": 250,
+  "interstitial_every": 3,
+  "daily_reward_base": 100
+}

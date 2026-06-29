@@ -1,0 +1,7 @@
+[
+  { "id": "runner_default", "name": "Spark",  "color": "#39ff14", "cost_coins": 0,    "cost_gems": 0, "coin_multiplier": 1.0 },
+  { "id": "runner_pulse",   "name": "Pulse",  "color": "#00e5ff", "cost_coins": 1500, "cost_gems": 0, "coin_multiplier": 1.0 },
+  { "id": "runner_volt",    "name": "Volt",   "color": "#ffe600", "cost_coins": 4000, "cost_gems": 0, "coin_multiplier": 1.25 },
+  { "id": "runner_laser",   "name": "Laser",  "color": "#ff006e", "cost_coins": 0,    "cost_gems": 25, "coin_multiplier": 1.5 },
+  { "id": "runner_prism",   "name": "Prism",  "color": "#b5179e", "cost_coins": 0,    "cost_gems": 60, "coin_multiplier": 2.0 }
+]

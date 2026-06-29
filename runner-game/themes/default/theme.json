@@ -1,0 +1,17 @@
+{
+  "name": "default",
+  "title": "RESKIN RUNNER",
+  "palette": {
+    "background": "#12122b",
+    "ground": "#2a2a45",
+    "player": "#ff5a5f",
+    "obstacle": "#3a86ff",
+    "coin": "#ffd23f"
+  },
+  "audio": {
+    "music": "assets/music.ogg",
+    "jump": "assets/jump.wav",
+    "coin": "assets/coin.wav",
+    "hit": "assets/hit.wav"
+  }
+}

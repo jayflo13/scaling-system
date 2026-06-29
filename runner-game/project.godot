@@ -1,0 +1,34 @@
+; Engine configuration file.
+; Reskin Runner — a config-driven endless runner for Godot 4.
+; To reskin: edit themes/<name>/theme.json + characters.json, then set
+; "active_theme" in config/game_config.json. No engine changes needed.
+
+config_version=5
+
+[application]
+
+config/name="Reskin Runner"
+config/description="Config-driven endless runner. Reskin via themes/<name>/."
+run/main_scene="res://src/Main.tscn"
+config/features=PackedStringArray("4.3", "Mobile")
+config/icon="res://icon.svg"
+
+[autoload]
+
+Config="*res://src/autoload/Config.gd"
+SaveManager="*res://src/autoload/SaveManager.gd"
+Economy="*res://src/autoload/Economy.gd"
+Ads="*res://src/autoload/Ads.gd"
+IAP="*res://src/autoload/IAP.gd"
+
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=1920
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation="portrait"
+
+[rendering]
+
+renderer/rendering_method="mobile"

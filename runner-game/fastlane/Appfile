@@ -1,0 +1,2 @@
+json_key_file(ENV["SUPPLY_JSON_KEY"]) # Play service-account JSON, provided by CI
+package_name("com.example.reskinrunner") # must match package/unique_name in export_presets.cfg

@@ -1,0 +1,20 @@
+# Godot 4
+.godot/
+.import/
+export.cfg
+
+# Build output
+build/
+*.apk
+*.aab
+*.ipa
+
+# Signing / secrets — NEVER commit these
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+release.keystore
+keystore.properties
+fastlane/*.json
+.env

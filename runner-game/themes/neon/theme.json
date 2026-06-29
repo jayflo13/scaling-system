@@ -1,0 +1,17 @@
+{
+  "name": "neon",
+  "title": "NEON DASH",
+  "palette": {
+    "background": "#0b022d",
+    "ground": "#1a0a3a",
+    "player": "#39ff14",
+    "obstacle": "#ff006e",
+    "coin": "#00e5ff"
+  },
+  "audio": {
+    "music": "assets/music.ogg",
+    "jump": "assets/jump.wav",
+    "coin": "assets/coin.wav",
+    "hit": "assets/hit.wav"
+  }
+}

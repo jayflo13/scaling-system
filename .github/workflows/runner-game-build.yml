@@ -1,0 +1,116 @@
+name: runner-game build
+
+# Builds the Godot runner from the CLI on every push that touches it, and
+# (when Play secrets are configured) uploads a signed AAB via Fastlane.
+#
+# Required repo secrets for the signed release + upload job:
+#   ANDROID_KEYSTORE_B64   base64 of your release .keystore
+#   ANDROID_KEYSTORE_PASS  keystore password
+#   ANDROID_KEY_ALIAS      key alias
+#   ANDROID_KEY_PASS       key password
+#   PLAY_SERVICE_ACCOUNT   Play Console service-account JSON (raw)
+# Add them in GitHub: Settings -> Secrets and variables -> Actions.
+
+on:
+  push:
+    branches: [claude/mobile-game-outline-lcrqgg]
+    paths: ["runner-game/**", ".github/workflows/runner-game-build.yml"]
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: runner-game
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Godot 4 + export templates preinstalled. Bump the tag to match your Godot.
+    container: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install export templates
+        run: |
+          mkdir -v -p ~/.local/share/godot/export_templates/
+          mv /root/.local/share/godot/export_templates/* ~/.local/share/godot/export_templates/ || true
+
+      - name: Import resources (headless)
+        run: godot --headless --path . --import || true
+
+      - name: Build debug APK
+        run: |
+          mkdir -p build
+          godot --headless --path . --export-debug "Android" build/runner-debug.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-debug-apk
+          path: runner-game/build/runner-debug.apk
+
+  release:
+    # Only runs when the Play secret is present (i.e. you've configured signing).
+    needs: build
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    container: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard — require signing secrets
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          SA: ${{ secrets.PLAY_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$KS" ] || [ -z "$SA" ]; then
+            echo "Signing/Play secrets not set — skipping release. See workflow header." >&2
+            exit 0
+          fi
+
+      - name: Decode release keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
+        run: echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > /tmp/release.keystore
+
+      - name: Write Play service account
+        if: ${{ secrets.PLAY_SERVICE_ACCOUNT != '' }}
+        run: echo '${{ secrets.PLAY_SERVICE_ACCOUNT }}' > /tmp/play.json
+
+      - name: Configure Godot Android signing
+        if: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
+        env:
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASS: ${{ secrets.ANDROID_KEY_PASS }}
+        run: |
+          # Point Godot's editor settings at the release keystore for headless signing.
+          ES=~/.config/godot/editor_settings-4.tres
+          mkdir -p "$(dirname "$ES")"
+          cat > "$ES" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+          [resource]
+          export/android/debug_keystore = "/tmp/release.keystore"
+          export/android/debug_keystore_user = "$ANDROID_KEY_ALIAS"
+          export/android/debug_keystore_pass = "$ANDROID_KEYSTORE_PASS"
+          EOF
+          godot --headless --path . --import || true
+
+      - name: Build signed AAB
+        if: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
+        env:
+          ANDROID_KEYSTORE_PATH: /tmp/release.keystore
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASS: ${{ secrets.ANDROID_KEY_PASS }}
+        run: |
+          mkdir -p build
+          godot --headless --path . --export-release "Android" build/runner.aab
+
+      - name: Upload to Google Play (Fastlane supply)
+        if: ${{ secrets.PLAY_SERVICE_ACCOUNT != '' }}
+        env:
+          SUPPLY_JSON_KEY: /tmp/play.json
+          PLAY_TRACK: internal
+        run: |
+          gem install fastlane --no-document
+          bundle install || true
+          fastlane android deploy track:internal

@@ -1,0 +1,7 @@
+[
+  { "id": "runner_default", "name": "Rookie", "color": "#ff5a5f", "cost_coins": 0,    "cost_gems": 0, "coin_multiplier": 1.0 },
+  { "id": "runner_swift",   "name": "Swift",  "color": "#06d6a0", "cost_coins": 1500, "cost_gems": 0, "coin_multiplier": 1.0 },
+  { "id": "runner_magnet",  "name": "Magnet", "color": "#ffd23f", "cost_coins": 4000, "cost_gems": 0, "coin_multiplier": 1.25 },
+  { "id": "runner_ace",     "name": "Ace",    "color": "#ef476f", "cost_coins": 0,    "cost_gems": 25, "coin_multiplier": 1.5 },
+  { "id": "runner_neon",    "name": "Neon",   "color": "#b5179e", "cost_coins": 0,    "cost_gems": 60, "coin_multiplier": 2.0 }
+]
