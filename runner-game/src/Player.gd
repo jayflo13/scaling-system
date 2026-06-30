@@ -15,18 +15,21 @@ var velocity_y := 0.0
 var ground_y := 0.0
 var jumps_used := 0
 var alive := true
+var invulnerable := false          # head-start shield ignores obstacles
+var coin_multiplier := 1.0         # from the selected character
 var size := Vector2(96, 96)
+var _rect: ColorRect
 
 func setup(gy: float) -> void:
 	ground_y = gy
 	position.y = ground_y
 	add_to_group("player")
 
-	var rect := ColorRect.new()
-	rect.color = Config.color("player", Color("#ff5a5f"))
-	rect.size = size
-	rect.position = -size / 2.0
-	add_child(rect)
+	_rect = ColorRect.new()
+	_rect.color = Config.color("player", Color("#ff5a5f"))
+	_rect.size = size
+	_rect.position = -size / 2.0
+	add_child(_rect)
 
 	var shape := CollisionShape2D.new()
 	var rs := RectangleShape2D.new()
@@ -53,6 +56,18 @@ func jump() -> void:
 		velocity_y = jump_force
 		jumps_used += 1
 
+## Apply the selected character's look + coin multiplier.
+func apply_character(def: Dictionary) -> void:
+	coin_multiplier = float(def.get("coin_multiplier", 1.0))
+	if _rect and def.has("color"):
+		_rect.color = Color(def["color"])
+
+## Visual cue while the head-start shield is active.
+func set_shield(active: bool) -> void:
+	invulnerable = active
+	if _rect:
+		_rect.modulate = Color(1, 1, 1, 0.55) if active else Color.WHITE
+
 ## Used by Revive: lift the player back up and resume.
 func revive() -> void:
 	alive = true
@@ -70,5 +85,7 @@ func _on_area_entered(a: Area2D) -> void:
 		coin_collected.emit(v)
 		a.queue_free()
 	elif a.is_in_group("obstacles"):
+		if invulnerable:
+			return
 		alive = false
 		died.emit()

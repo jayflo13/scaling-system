@@ -17,7 +17,10 @@ var run_coins := 0
 var score := 0
 var spawn_timer := 0.0
 var spawn_interval := 1.15
-var revived := false
+var revives_used := 0
+var max_revives := 1
+var head_start_timer := 0.0
+var coin_mult := 1.0           # character mult x coin-doubler upgrade
 var rng := RandomNumberGenerator.new()
 
 var vp: Vector2
@@ -35,6 +38,8 @@ var balance_label: Label
 var menu: Control
 var over_panel: Control
 var shop_panel: Control
+var char_panel: Control
+var up_panel: Control
 
 func _ready() -> void:
 	rng.seed = int(Time.get_unix_time_from_system())
@@ -91,6 +96,12 @@ func _process(delta: float) -> void:
 
 	if state != State.PLAYING:
 		return
+
+	# Head-start shield (upgrade): ignore obstacles for a few seconds.
+	if head_start_timer > 0.0:
+		head_start_timer -= delta
+		if head_start_timer <= 0.0:
+			player.set_shield(false)
 
 	# Difficulty ramps with distance (variable, escalating challenge).
 	distance += speed * delta
@@ -160,26 +171,45 @@ func _start_run() -> void:
 	score = 0
 	speed = base_speed
 	spawn_timer = 0.0
-	revived = false
+	# Apply selected character + persistent upgrades for this run.
+	var sel := _selected_def()
+	player.apply_character(sel)
+	coin_mult = float(sel.get("coin_multiplier", 1.0)) * Upgrades.coin_multiplier()
+	revives_used = 0
+	max_revives = 1 + Upgrades.extra_revives()
+	head_start_timer = Upgrades.head_start_seconds()
+	player.set_shield(head_start_timer > 0.0)
 	player.alive = true
 	player.position.y = ground_y
 	player.velocity_y = 0.0
 	menu.visible = false
 	over_panel.visible = false
 	shop_panel.visible = false
+	char_panel.visible = false
+	up_panel.visible = false
 	coin_label.text = "0"
 	score_label.text = "0"
 	state = State.PLAYING
+
+func _selected_def() -> Dictionary:
+	var sel := String(SaveManager.get_v("selected", "runner_default"))
+	for c in Config.characters:
+		if typeof(c) == TYPE_DICTIONARY and c.get("id", "") == sel:
+			return c
+	return {}
 
 func _on_coin(value: int) -> void:
 	run_coins += value
 	coin_label.text = "%d" % run_coins
 	_add_shake(3.0)
 
+func _banked_coins() -> int:
+	return int(round(run_coins * coin_mult))
+
 func _on_player_died() -> void:
 	_add_shake(24.0)
-	# Bank the coins earned this run.
-	Economy.add_coins(run_coins)
+	# Bank the coins earned this run, scaled by character + upgrade multiplier.
+	Economy.add_coins(_banked_coins())
 	if score > int(SaveManager.get_v("high_score", 0)):
 		SaveManager.set_v("high_score", score)
 	state = State.OVER
@@ -187,8 +217,10 @@ func _on_player_died() -> void:
 	_show_over()
 
 func _revive() -> void:
-	# One ad-revive per run (classic rewarded-ad hook).
-	revived = true
+	# Ad-revive, limited by the Extra Revive upgrade (1 + level per run).
+	revives_used += 1
+	head_start_timer = max(head_start_timer, 1.5)  # brief shield on revive
+	player.set_shield(true)
 	over_panel.visible = false
 	# Clear nearby obstacles so the player doesn't instantly die again.
 	for c in world.get_children():
@@ -229,6 +261,8 @@ func _build_hud() -> void:
 	_build_menu()
 	_build_over()
 	_build_shop()
+	_build_character_panel()
+	_build_upgrade_panel()
 
 func _make_label(text: String, font_size: int, pos: Vector2) -> Label:
 	var l := Label.new()
@@ -267,13 +301,20 @@ func _refresh_balance() -> void:
 func _build_menu() -> void:
 	menu = _panel(String(Config.theme.get("title", "RESKIN RUNNER")))
 	var cx := vp.x / 2.0 - 260.0
-	var play := _make_button("PLAY", Vector2(cx, vp.y * 0.45))
+	var y0 := vp.y * 0.38
+	var play := _make_button("PLAY", Vector2(cx, y0))
 	play.pressed.connect(_start_run)
 	menu.add_child(play)
-	var shop := _make_button("SHOP", Vector2(cx, vp.y * 0.45 + 160))
+	var chars := _make_button("CHARACTERS", Vector2(cx, y0 + 150))
+	chars.pressed.connect(_show_characters)
+	menu.add_child(chars)
+	var ups := _make_button("UPGRADES", Vector2(cx, y0 + 300))
+	ups.pressed.connect(_show_upgrades)
+	menu.add_child(ups)
+	var shop := _make_button("SHOP", Vector2(cx, y0 + 450))
 	shop.pressed.connect(func(): shop_panel.visible = true)
 	menu.add_child(shop)
-	balance_label = _make_label("", 40, Vector2(0, vp.y * 0.78))
+	balance_label = _make_label("", 40, Vector2(0, vp.y * 0.88))
 	balance_label.size = Vector2(vp.x, 60)
 	balance_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	menu.add_child(balance_label)
@@ -297,12 +338,12 @@ func _show_over() -> void:
 		if c is Button or (c is Label and c.position.y > vp.y * 0.3):
 			c.queue_free()
 	var cx := vp.x / 2.0 - 260.0
-	var info := _make_label("Score %d   +%d coins" % [score, run_coins], 44, Vector2(0, vp.y * 0.34))
+	var info := _make_label("Score %d   +%d coins (x%.2f)" % [score, _banked_coins(), coin_mult], 44, Vector2(0, vp.y * 0.34))
 	info.size = Vector2(vp.x, 60)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	over_panel.add_child(info)
 
-	if not revived:
+	if revives_used < max_revives:
 		var rev := _make_button("REVIVE (Watch Ad)", Vector2(cx, vp.y * 0.45))
 		rev.pressed.connect(func():
 			rev.disabled = true
@@ -347,3 +388,88 @@ func _build_shop() -> void:
 	shop_panel.add_child(close)
 	hud.add_child(shop_panel)
 	IAP.purchase_succeeded.connect(func(_id): _refresh_balance())
+
+# ---- Shared: clear the dynamically-built rows of a panel (keep dim + title)
+func _clear_dynamic(panel: Control) -> void:
+	for c in panel.get_children():
+		if c is Button or (c is Label and c.position.y > vp.y * 0.28):
+			c.queue_free()
+
+# ---- Character select
+func _build_character_panel() -> void:
+	char_panel = _panel("CHARACTERS")
+	char_panel.visible = false
+	hud.add_child(char_panel)
+
+func _show_characters() -> void:
+	_clear_dynamic(char_panel)
+	var cx := vp.x / 2.0 - 320.0
+	var y := vp.y * 0.30
+	var sel := String(SaveManager.get_v("selected", "runner_default"))
+	for c in Config.characters:
+		if typeof(c) != TYPE_DICTIONARY:
+			continue
+		var id := String(c.get("id", ""))
+		var nm := String(c.get("name", id))
+		var mult := float(c.get("coin_multiplier", 1.0))
+		var status := ""
+		if id == sel:
+			status = "SELECTED"
+		elif Economy.is_unlocked(id):
+			status = "TAP TO USE"
+		elif int(c.get("cost_gems", 0)) > 0:
+			status = "%d gems" % int(c.get("cost_gems", 0))
+		else:
+			status = "%d coins" % int(c.get("cost_coins", 0))
+		var b := _make_button("%s  x%.2f  [%s]" % [nm, mult, status], Vector2(cx, y), Vector2(640, 100))
+		b.add_theme_font_size_override("font_size", 32)
+		var cid := id
+		b.pressed.connect(func(): _on_character_pressed(cid))
+		char_panel.add_child(b)
+		y += 120
+	var close := _make_button("CLOSE", Vector2(cx, y), Vector2(640, 100))
+	close.pressed.connect(func(): char_panel.visible = false)
+	char_panel.add_child(close)
+	char_panel.visible = true
+
+func _on_character_pressed(id: String) -> void:
+	if Economy.is_unlocked(id):
+		SaveManager.set_v("selected", id)
+	elif Economy.try_unlock(id):     # buys it if affordable
+		SaveManager.set_v("selected", id)
+	_refresh_balance()
+	_show_characters()
+
+# ---- Upgrades (pay-to-win progression)
+func _build_upgrade_panel() -> void:
+	up_panel = _panel("UPGRADES")
+	up_panel.visible = false
+	hud.add_child(up_panel)
+
+func _show_upgrades() -> void:
+	_clear_dynamic(up_panel)
+	var cx := vp.x / 2.0 - 320.0
+	var y := vp.y * 0.30
+	for id in Upgrades.DEFS.keys():
+		var d: Dictionary = Upgrades.DEFS[id]
+		var lv := Upgrades.level(id)
+		var txt := ""
+		if Upgrades.is_max(id):
+			txt = "%s  Lv%d  [MAX]" % [d["name"], lv]
+		else:
+			txt = "%s  Lv%d  →  %d coins" % [d["name"], lv, Upgrades.cost(id)]
+		var b := _make_button(txt, Vector2(cx, y), Vector2(640, 100))
+		b.add_theme_font_size_override("font_size", 30)
+		var uid := String(id)
+		b.pressed.connect(func(): _on_upgrade_pressed(uid))
+		up_panel.add_child(b)
+		y += 120
+	var close := _make_button("CLOSE", Vector2(cx, y), Vector2(640, 100))
+	close.pressed.connect(func(): up_panel.visible = false)
+	up_panel.add_child(close)
+	up_panel.visible = true
+
+func _on_upgrade_pressed(id: String) -> void:
+	Upgrades.try_buy(id)
+	_refresh_balance()
+	_show_upgrades()
