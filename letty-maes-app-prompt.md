@@ -50,6 +50,9 @@ Every menu item must have a large, **appetizing, professional-quality photo** �
 
 **Admin (lightweight)**
 - Password-protected `/admin` dashboard for staff: incoming orders list with status buttons (mark Preparing / Ready / Picked Up), daily order history, and the ability to mark menu items as sold out (sold-out items show grayed-out with a "Sold out today" ribbon).
+- Design the dashboard for a tablet propped at the counter: large touch-friendly buttons, orders **sorted by pickup time** with the soonest at top, each card showing customer name, phone, items with options/special instructions, order number, amount paid, and pickup time. Auto-refresh (poll or websocket) so new orders appear without reloading.
+- **New-order alerts:** play a loud chime and flash the new order on the dashboard when an order arrives, AND send an email notification to a configurable business email address for every new order (include the full order details and pickup time). Structure the notification code so an SMS alert (e.g., via Twilio) can be added later.
+- A "Today at a glance" header: number of orders, next pickup time, and today's revenue.
 
 ## 4. Menu & Prices
 
@@ -108,3 +111,13 @@ Use this menu with these prices. *(Prices are realistic placeholders in the rest
 - Fast page loads; images lazy-loaded and optimized.
 
 Make it feel special — this is a beloved local tea room, and the app should be as delightful as the place itself.
+
+## 7. Configuration the Owner Will Provide (build these as settings, not hardcoded values)
+
+Keep all of the following in environment variables or an admin-editable settings area, with sensible defaults so the app runs in demo mode before the real values exist:
+
+- `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY` — start with Stripe **test mode** keys; the owner will swap in live keys from their own Stripe account when ready.
+- `ORDER_NOTIFICATION_EMAIL` — the business email that receives every new-order alert.
+- `ADMIN_PASSWORD` — for the staff dashboard.
+- Business hours, tax rate, and pickup-slot length — editable without code changes.
+- Include a `README-FOR-OWNER.md` written in plain, non-technical language explaining: (1) how to create a Stripe account and paste in the live keys, (2) how to open and use the admin dashboard on a tablet, (3) how to change menu items, prices, and hours, and (4) how to mark items sold out.
